@@ -1,0 +1,37 @@
+# docker-compose.waha.yml
+version: '3.8'
+
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: kaspi-waha
+    ports:
+      - "3000:3000"
+    environment:
+      - WAHA_SESSION_STORAGE=file
+      - WAHA_SESSION_STORAGE_PATH=/app/sessions
+      - WAHA_LOG_LEVEL=info
+      - WAHA_WEBHOOK_URL=http://host.docker.internal:8000/waha/webhook
+      - WAHA_WEBHOOK_EVENTS=message,messageStatus,sessionStatus
+    volumes:
+      - waha_sessions:/app/sessions
+      - waha_logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - kaspi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  waha_sessions:
+    driver: local
+  waha_logs:
+    driver: local
+
+networks:
+  kaspi-network:
+    external: true

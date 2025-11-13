@@ -1,0 +1,56 @@
+# version не нужен
+
+x-common-env: &common_env
+  INSTANCE_COUNT: "5"
+  MAX_CONCURRENT_TASKS: "100"
+  ID_IS_UUID: "false"         # поставь true, если products.id = UUID
+  SYNC_STORES_MODE: "leader"  # "leader" или "shard"
+  DATABASE_URL: "${DATABASE_URL}"
+  SUPABASE_URL: "${SUPABASE_URL}"
+  SUPABASE_KEY: "${SUPABASE_KEY}"
+
+services:
+  demper-0:
+    build:
+      context: .          # <— контекст = backend/
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+      INSTANCE_INDEX: "0"
+
+  demper-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+      INSTANCE_INDEX: "1"
+
+  demper-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+      INSTANCE_INDEX: "2"
+
+  demper-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+      INSTANCE_INDEX: "3"
+
+  demper-4:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+      INSTANCE_INDEX: "4"

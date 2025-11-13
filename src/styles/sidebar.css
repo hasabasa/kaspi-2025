@@ -1,0 +1,205 @@
+/* AdminHub стили для сайдбара - адаптированные под наши цвета темы */
+
+:root {
+	--poppins: 'Poppins', sans-serif;
+	--lato: 'Lato', sans-serif;
+
+	/* Переменные для сайдбара */
+	--sidebar-light: hsl(var(--card));        /* Фон сайдбара = цвет карточек (белый) */
+	--sidebar-grey: hsl(var(--background));   /* Активный фон = фон платформы (светло-серый) */
+	--blue: #3C91E6;
+	--light-blue: #CFE8FF;
+	--dark-grey: #AAAAAA;
+	--sidebar-dark: hsl(var(--foreground));
+	--red: #DB504A;
+	--yellow: #FFCE26;
+	--light-yellow: #FFF2C6;
+	--orange: #FD7238;
+	--light-orange: #FFE0D3;
+}
+
+.dark {
+	--sidebar-light: hsl(var(--card));        /* Фон сайдбара = цвет карточек (темный) */
+	--sidebar-grey: hsl(var(--background));   /* Активный фон = фон платформы (очень темный) */
+	--sidebar-dark: hsl(var(--foreground));
+}
+
+/* SIDEBAR - точная копия AdminHub */
+#sidebar {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 220px;
+	height: 100%;
+	background: var(--sidebar-light);
+	z-index: 2000;
+	font-family: var(--lato);
+	transition: .3s ease;
+	overflow-x: hidden;
+	scrollbar-width: none;
+}
+
+#sidebar::-webkit-scrollbar {
+	display: none;
+}
+
+#sidebar.hide {
+	width: 60px;
+}
+
+#sidebar .side-menu {
+	width: 100%;
+	margin-top: 48px;
+}
+
+#sidebar .side-menu li {
+	height: 48px;
+	background: transparent;
+	margin-left: 6px;
+	border-radius: 48px 0 0 48px;
+	padding: 4px;
+}
+
+#sidebar .side-menu li.active {
+	background: var(--sidebar-grey);
+	position: relative;
+}
+
+#sidebar .side-menu li.active::before {
+	content: '';
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	top: -40px;
+	right: 0;
+	box-shadow: 20px 20px 0 var(--sidebar-grey);
+	z-index: -1;
+}
+
+#sidebar .side-menu li.active::after {
+	content: '';
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	bottom: -40px;
+	right: 0;
+	box-shadow: 20px -20px 0 var(--sidebar-grey);
+	z-index: -1;
+}
+
+#sidebar .side-menu li a {
+	width: 100%;
+	height: 100%;
+	background: var(--sidebar-light);
+	display: flex;
+	align-items: center;
+	border-radius: 48px;
+	font-size: 16px;
+	color: var(--sidebar-dark);
+	white-space: nowrap;
+	overflow-x: hidden;
+	text-decoration: none;
+}
+
+#sidebar .side-menu.top li.active a {
+	color: var(--blue);
+}
+
+#sidebar.hide .side-menu li a {
+	width: calc(48px - (4px * 2));
+	transition: width .3s ease;
+}
+
+#sidebar .side-menu li a.logout {
+	color: var(--red);
+}
+
+#sidebar .side-menu.top li a:hover {
+	color: var(--blue);
+}
+
+#sidebar .side-menu li a svg {
+	min-width: calc(60px - ((4px + 6px) * 2));
+	display: flex;
+	justify-content: center;
+}
+
+#sidebar .side-menu li a .text {
+	margin-left: 12px;
+	font-weight: 500;
+}
+
+#sidebar .side-menu.bottom {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+
+#sidebar .side-menu.bottom li:nth-last-of-type(-n+2) {
+	position: relative;
+	text-align: center;
+	margin-bottom: 8px;
+}
+
+/* Скрытие текста при сворачивании */
+#sidebar.hide .side-menu li a .text {
+	display: none;
+}
+
+/* Темная тема */
+.dark #sidebar {
+	background: var(--sidebar-light);
+}
+
+.dark #sidebar .side-menu li.active {
+	background: var(--sidebar-grey);
+}
+
+.dark #sidebar .side-menu li.active::before {
+	box-shadow: 20px 20px 0 var(--sidebar-grey);
+}
+
+.dark #sidebar .side-menu li.active::after {
+	box-shadow: 20px -20px 0 var(--sidebar-grey);
+}
+
+.dark #sidebar .side-menu li a {
+	background: var(--sidebar-light);
+	color: var(--sidebar-dark);
+}
+
+.dark #sidebar .side-menu.top li.active a {
+	color: var(--blue);
+}
+
+.dark #sidebar .side-menu li a.logout {
+	color: var(--red);
+}
+
+.dark #sidebar .side-menu.top li a:hover {
+	color: var(--blue);
+}
+
+/* Управление основным контентом при изменении состояния сайдбара */
+.main-content {
+	margin-left: 220px;
+	transition: margin-left 0.3s ease;
+}
+
+.main-content.sidebar-collapsed {
+	margin-left: 60px;
+}
+
+/* Мобильная адаптивность */
+@media screen and (max-width: 576px) {
+	.main-content {
+		margin-left: 0 !important;
+	}
+	
+	.main-content.sidebar-collapsed {
+		margin-left: 0 !important;
+	}
+}

@@ -1,0 +1,817 @@
+ИНТЕГРАЦИЯ WHATSAPP УВЕДОМЛЕНИЙ С СИСТЕМОЙ KASPI DEMPER
+================================================================
+
+ОПИСАНИЕ ПРОЕКТА:
+Интеграция системы автоматических WhatsApp уведомлений с существующей системой 
+получения заказов Kaspi Demper для отправки кастомных сообщений покупателям.
+
+АРХИТЕКТУРА РЕШЕНИЯ:
+Kaspi API → api_parser.py → WAHA API → WhatsApp → Покупатель
+
+ТЕХНОЛОГИИ:
+- Backend: FastAPI, Python, PostgreSQL
+- WhatsApp API: WAHA (https://waha.devlike.pro/)
+- Frontend: React/Next.js
+- Database: PostgreSQL
+
+================================================================
+1. СТРУКТУРА БАЗЫ ДАННЫХ
+================================================================
+
+-- Таблица для хранения шаблонов WhatsApp сообщений
+CREATE TABLE whatsapp_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID REFERENCES kaspi_stores(id) ON DELETE CASCADE,
+    template_name VARCHAR(255) NOT NULL,
+    template_text TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Таблица для логирования отправленных сообщений
+CREATE TABLE whatsapp_messages_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID REFERENCES kaspi_stores(id),
+    order_id VARCHAR(255),
+    customer_phone VARCHAR(20),
+    message_text TEXT,
+    template_id UUID REFERENCES whatsapp_templates(id),
+    status VARCHAR(50) DEFAULT 'pending', -- pending, sent, failed, delivered
+    waha_response JSONB,
+    sent_at TIMESTAMP DEFAULT NOW(),
+    delivered_at TIMESTAMP,
+    error_message TEXT
+);
+
+-- Таблица для настроек WAHA
+CREATE TABLE whatsapp_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID REFERENCES kaspi_stores(id),
+    waha_server_url VARCHAR(500) NOT NULL,
+    waha_session_name VARCHAR(100) DEFAULT 'kaspi-session',
+    is_enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+================================================================
+2. BACKEND API ЭНДПОИНТЫ (main.py)
+================================================================
+
+# Получение всех шаблонов для магазина
+@app.get("/whatsapp/templates/{store_id}")
+async def get_whatsapp_templates(store_id: str):
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            templates = await conn.fetch(
+                """
+                SELECT id, template_name, template_text, is_active, created_at, updated_at
+                FROM whatsapp_templates
+                WHERE store_id = $1
+                ORDER BY created_at DESC
+                """,
+                store_id
+            )
+        return {"success": True, "templates": [dict(t) for t in templates]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Создание нового шаблона
+@app.post("/whatsapp/templates/{store_id}")
+async def create_whatsapp_template(store_id: str, template_data: dict):
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            template_id = await conn.fetchval(
+                """
+                INSERT INTO whatsapp_templates (store_id, template_name, template_text)
+                VALUES ($1, $2, $3)
+                RETURNING id
+                """,
+                store_id, template_data["template_name"], template_data["template_text"]
+            )
+        return {"success": True, "template_id": str(template_id)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Обновление существующего шаблона
+@app.put("/whatsapp/templates/{template_id}")
+async def update_whatsapp_template(template_id: str, template_data: dict):
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE whatsapp_templates
+                SET template_name = $1, template_text = $2, updated_at = NOW()
+                WHERE id = $3
+                """,
+                template_data["template_name"], template_data["template_text"], template_id
+            )
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Удаление шаблона
+@app.delete("/whatsapp/templates/{template_id}")
+async def delete_whatsapp_template(template_id: str):
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM whatsapp_templates WHERE id = $1", template_id)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Отправка тестового сообщения
+@app.post("/whatsapp/send-test/{store_id}")
+async def send_test_whatsapp_message(store_id: str, test_data: dict):
+    try:
+        message = await process_whatsapp_template(
+            test_data["template_text"], 
+            test_data["sample_data"]
+        )
+        
+        result = await send_whatsapp_message(
+            test_data["phone_number"], 
+            message, 
+            store_id
+        )
+        
+        return {"success": True, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Получение настроек WAHA для магазина
+@app.get("/whatsapp/settings/{store_id}")
+async def get_whatsapp_settings(store_id: str):
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            settings = await conn.fetchrow(
+                """
+                SELECT waha_server_url, waha_session_name, is_enabled
+                FROM whatsapp_settings
+                WHERE store_id = $1
+                """,
+                store_id
+            )
+        return {"success": True, "settings": dict(settings) if settings else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Обновление настроек WAHA
+@app.post("/whatsapp/settings/{store_id}")
+async def update_whatsapp_settings(store_id: str, settings_data: dict):
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO whatsapp_settings (store_id, waha_server_url, waha_session_name, is_enabled)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (store_id) DO UPDATE SET
+                    waha_server_url = EXCLUDED.waha_server_url,
+                    waha_session_name = EXCLUDED.waha_session_name,
+                    is_enabled = EXCLUDED.is_enabled,
+                    updated_at = NOW()
+                """,
+                store_id, 
+                settings_data["waha_server_url"], 
+                settings_data["waha_session_name"],
+                settings_data.get("is_enabled", True)
+            )
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+================================================================
+3. ФУНКЦИИ ОБРАБОТКИ (api_parser.py)
+================================================================
+
+import aiohttp
+import json
+from datetime import datetime
+from typing import Dict, Any, Optional
+
+# Обработка шаблона сообщения с подстановкой переменных
+def process_whatsapp_template(template_text: str, order_data: dict) -> str:
+    """
+    Заменяет переменные в шаблоне на данные заказа
+    
+    Доступные переменные:
+    - {user_name} - имя покупателя
+    - {order_num} - номер заказа
+    - {product_name} - название товара
+    - {item_qty} - количество
+    - {shop_name} - название магазина
+    - {delivery_type} - тип доставки
+    - {order_date} - дата заказа
+    - {total_amount} - сумма заказа
+    - {customer_phone} - телефон покупателя
+    """
+    
+    replacements = {
+        '{user_name}': order_data.get('customer_name', 'Клиент'),
+        '{order_num}': order_data.get('order_id', 'N/A'),
+        '{product_name}': order_data.get('product_name', 'Товар'),
+        '{item_qty}': str(order_data.get('quantity', 1)),
+        '{shop_name}': order_data.get('shop_name', 'Магазин'),
+        '{delivery_type}': order_data.get('delivery_type', 'самовывоз'),
+        '{order_date}': order_data.get('order_date', datetime.now().strftime('%d.%m.%Y')),
+        '{total_amount}': str(order_data.get('total_amount', 0)),
+        '{customer_phone}': order_data.get('customer_phone', '')
+    }
+    
+    message = template_text
+    for placeholder, value in replacements.items():
+        message = message.replace(placeholder, str(value))
+    
+    return message
+
+# Отправка сообщения через WAHA API
+async def send_whatsapp_message(phone_number: str, message: str, store_id: str) -> dict:
+    """
+    Отправляет сообщение через WAHA API
+    """
+    try:
+        # Получаем настройки WAHA для магазина
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            settings = await conn.fetchrow(
+                """
+                SELECT waha_server_url, waha_session_name, is_enabled
+                FROM whatsapp_settings
+                WHERE store_id = $1 AND is_enabled = TRUE
+                """,
+                store_id
+            )
+        
+        if not settings:
+            raise Exception("WAHA настройки не найдены или отключены")
+        
+        waha_url = f"{settings['waha_server_url']}/api/sendText"
+        
+        # Форматируем номер телефона для WhatsApp
+        clean_phone = ''.join(filter(str.isdigit, phone_number))
+        if not clean_phone.startswith('7'):
+            clean_phone = '7' + clean_phone
+        
+        chat_id = f"{clean_phone}@c.us"
+        
+        payload = {
+            "session": settings['waha_session_name'],
+            "chatId": chat_id,
+            "text": message
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(waha_url, json=payload, timeout=30) as response:
+                result = await response.json()
+                
+                # Логируем результат
+                await log_whatsapp_message(
+                    store_id=store_id,
+                    order_id=None,
+                    customer_phone=phone_number,
+                    message_text=message,
+                    template_id=None,
+                    status='sent' if response.status == 200 else 'failed',
+                    waha_response=result,
+                    error_message=None if response.status == 200 else result.get('message')
+                )
+                
+                return result
+                
+    except Exception as e:
+        # Логируем ошибку
+        await log_whatsapp_message(
+            store_id=store_id,
+            order_id=None,
+            customer_phone=phone_number,
+            message_text=message,
+            template_id=None,
+            status='failed',
+            waha_response=None,
+            error_message=str(e)
+        )
+        raise e
+
+# Логирование отправленных сообщений
+async def log_whatsapp_message(
+    store_id: str,
+    order_id: Optional[str],
+    customer_phone: str,
+    message_text: str,
+    template_id: Optional[str],
+    status: str,
+    waha_response: Optional[dict],
+    error_message: Optional[str]
+):
+    """
+    Сохраняет информацию об отправленном сообщении в лог
+    """
+    try:
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO whatsapp_messages_log 
+                (store_id, order_id, customer_phone, message_text, template_id, 
+                 status, waha_response, error_message)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                """,
+                store_id, order_id, customer_phone, message_text, 
+                template_id, status, json.dumps(waha_response) if waha_response else None, 
+                error_message
+            )
+    except Exception as e:
+        print(f"Ошибка логирования WhatsApp сообщения: {e}")
+
+# Извлечение данных покупателя из заказа Kaspi
+def extract_customer_data_from_order(order_data: dict) -> dict:
+    """
+    Извлекает данные покупателя из структуры заказа Kaspi
+    """
+    customer_data = {
+        'customer_name': order_data.get('customerName', 'Клиент'),
+        'customer_phone': order_data.get('customerPhone', ''),
+        'order_id': order_data.get('orderId', ''),
+        'product_name': order_data.get('productName', 'Товар'),
+        'quantity': order_data.get('quantity', 1),
+        'total_amount': order_data.get('totalPrice', 0),
+        'delivery_type': 'доставка' if order_data.get('deliveryType') == 'DELIVERY' else 'самовывоз',
+        'order_date': datetime.fromtimestamp(order_data.get('createDate', 0) / 1000).strftime('%d.%m.%Y'),
+        'shop_name': order_data.get('shopName', 'Магазин')
+    }
+    
+    return customer_data
+
+# Автоматическая отправка уведомлений при получении новых заказов
+async def process_new_orders_for_whatsapp(shop_id: str, orders_data: list):
+    """
+    Обрабатывает новые заказы и отправляет WhatsApp уведомления
+    """
+    try:
+        # Получаем активный шаблон для магазина
+        pool = await create_pool()
+        async with pool.acquire() as conn:
+            template = await conn.fetchrow(
+                """
+                SELECT id, template_text
+                FROM whatsapp_templates
+                WHERE store_id = $1 AND is_active = TRUE
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                shop_id
+            )
+        
+        if not template:
+            print(f"Активный шаблон WhatsApp не найден для магазина {shop_id}")
+            return
+        
+        # Проверяем настройки WAHA
+        settings = await conn.fetchrow(
+            """
+            SELECT is_enabled
+            FROM whatsapp_settings
+            WHERE store_id = $1
+            """,
+            shop_id
+        )
+        
+        if not settings or not settings['is_enabled']:
+            print(f"WhatsApp уведомления отключены для магазина {shop_id}")
+            return
+        
+        # Обрабатываем каждый заказ
+        for order in orders_data:
+            if order.get('status') in ['NEW', 'CONFIRMED']:  # Новые или подтвержденные заказы
+                customer_data = extract_customer_data_from_order(order)
+                
+                if customer_data['customer_phone']:
+                    # Формируем сообщение
+                    message = process_whatsapp_template(template['template_text'], customer_data)
+                    
+                    # Отправляем сообщение
+                    await send_whatsapp_message(
+                        customer_data['customer_phone'], 
+                        message, 
+                        shop_id
+                    )
+                    
+                    print(f"Отправлено WhatsApp уведомление для заказа {customer_data['order_id']}")
+                else:
+                    print(f"Номер телефона не найден для заказа {customer_data['order_id']}")
+                    
+    except Exception as e:
+        print(f"Ошибка обработки заказов для WhatsApp: {e}")
+
+# Модификация существующей функции get_sells для интеграции с WhatsApp
+async def get_sells_with_whatsapp(shop_id):
+    """
+    Расширенная версия get_sells с автоматической отправкой WhatsApp уведомлений
+    """
+    session_manager = SessionManager(shop_uid=shop_id)
+    if not await session_manager.load():
+        return False, 'Сессия истекла, пожалуйста, войдите заново.'
+    
+    cookies = session_manager.get_cookies()
+    result = get_sells_delivery_request(session_manager.merchant_uid, cookies)
+    
+    # Обрабатываем новые заказы для WhatsApp
+    if result.get('orders'):
+        await process_new_orders_for_whatsapp(shop_id, result['orders'])
+    
+    return True, result
+
+================================================================
+4. ПРИМЕР ШАБЛОНА СООБЩЕНИЯ
+================================================================
+
+Здравствуйте, {user_name}!
+Ваш заказ Nº {order_num} "{product_name}", количество: {item_qty} шт готов к самовывозу.
+* В ближайшее время мы свяжемся с вами для уточнения деталей заказа.
+* Спасибо за Ваш выбор! Если у Вас есть вопросы, обращайтесь в любое время.
+С уважением,
+{shop_name}
+
+================================================================
+5. FRONTEND КОМПОНЕНТЫ (React/Next.js)
+================================================================
+
+// Компонент редактора шаблонов
+const WhatsAppTemplateEditor = ({ storeId }) => {
+  const [templates, setTemplates] = useState([]);
+  const [currentTemplate, setCurrentTemplate] = useState('');
+  const [templateName, setTemplateName] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  // Загрузка шаблонов
+  useEffect(() => {
+    fetchTemplates();
+  }, [storeId]);
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch(`/api/whatsapp/templates/${storeId}`);
+      const data = await response.json();
+      setTemplates(data.templates);
+    } catch (error) {
+      console.error('Ошибка загрузки шаблонов:', error);
+    }
+  };
+
+  // Сохранение шаблона
+  const handleSave = async () => {
+    try {
+      const url = isEditing 
+        ? `/api/whatsapp/templates/${editingId}`
+        : `/api/whatsapp/templates/${storeId}`;
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template_name: templateName,
+          template_text: currentTemplate
+        })
+      });
+      
+      if (response.ok) {
+        fetchTemplates();
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения шаблона:', error);
+    }
+  };
+
+  // Сброс формы
+  const resetForm = () => {
+    setCurrentTemplate('');
+    setTemplateName('');
+    setIsEditing(false);
+    setEditingId(null);
+  };
+
+  // Редактирование шаблона
+  const handleEdit = (template) => {
+    setCurrentTemplate(template.template_text);
+    setTemplateName(template.template_name);
+    setIsEditing(true);
+    setEditingId(template.id);
+  };
+
+  // Удаление шаблона
+  const handleDelete = async (templateId) => {
+    if (confirm('Вы уверены, что хотите удалить этот шаблон?')) {
+      try {
+        await fetch(`/api/whatsapp/templates/${templateId}`, {
+          method: 'DELETE'
+        });
+        fetchTemplates();
+      } catch (error) {
+        console.error('Ошибка удаления шаблона:', error);
+      }
+    }
+  };
+
+  return (
+    <div className="whatsapp-template-editor">
+      <h3>Редактор шаблонов WhatsApp</h3>
+      
+      {/* Форма создания/редактирования */}
+      <div className="template-form">
+        <input
+          type="text"
+          placeholder="Название шаблона"
+          value={templateName}
+          onChange={(e) => setTemplateName(e.target.value)}
+        />
+        
+        <textarea
+          placeholder="Введите шаблон сообщения..."
+          value={currentTemplate}
+          onChange={(e) => setCurrentTemplate(e.target.value)}
+          rows={10}
+        />
+        
+        <div className="template-variables">
+          <h4>Доступные переменные:</h4>
+          <div className="variables-list">
+            <span>{'{user_name}'}</span>
+            <span>{'{order_num}'}</span>
+            <span>{'{product_name}'}</span>
+            <span>{'{item_qty}'}</span>
+            <span>{'{shop_name}'}</span>
+            <span>{'{delivery_type}'}</span>
+            <span>{'{order_date}'}</span>
+            <span>{'{total_amount}'}</span>
+          </div>
+        </div>
+        
+        <div className="form-actions">
+          <button onClick={handleSave}>
+            {isEditing ? 'Обновить' : 'Создать'} шаблон
+          </button>
+          {isEditing && (
+            <button onClick={resetForm}>Отмена</button>
+          )}
+        </div>
+      </div>
+      
+      {/* Список существующих шаблонов */}
+      <div className="templates-list">
+        <h4>Существующие шаблоны:</h4>
+        {templates.map(template => (
+          <div key={template.id} className="template-item">
+            <h5>{template.template_name}</h5>
+            <p>{template.template_text}</p>
+            <div className="template-actions">
+              <button onClick={() => handleEdit(template)}>Редактировать</button>
+              <button onClick={() => handleDelete(template.id)}>Удалить</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Компонент настроек WAHA
+const WAHASettings = ({ storeId }) => {
+  const [settings, setSettings] = useState({
+    waha_server_url: '',
+    waha_session_name: 'kaspi-session',
+    is_enabled: true
+  });
+
+  useEffect(() => {
+    fetchSettings();
+  }, [storeId]);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch(`/api/whatsapp/settings/${storeId}`);
+      const data = await response.json();
+      if (data.settings) {
+        setSettings(data.settings);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки настроек:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await fetch(`/api/whatsapp/settings/${storeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      alert('Настройки сохранены!');
+    } catch (error) {
+      console.error('Ошибка сохранения настроек:', error);
+    }
+  };
+
+  return (
+    <div className="waha-settings">
+      <h3>Настройки WAHA</h3>
+      
+      <div className="settings-form">
+        <label>
+          URL сервера WAHA:
+          <input
+            type="url"
+            value={settings.waha_server_url}
+            onChange={(e) => setSettings({
+              ...settings,
+              waha_server_url: e.target.value
+            })}
+            placeholder="http://localhost:3000"
+          />
+        </label>
+        
+        <label>
+          Имя сессии:
+          <input
+            type="text"
+            value={settings.waha_session_name}
+            onChange={(e) => setSettings({
+              ...settings,
+              waha_session_name: e.target.value
+            })}
+          />
+        </label>
+        
+        <label>
+          <input
+            type="checkbox"
+            checked={settings.is_enabled}
+            onChange={(e) => setSettings({
+              ...settings,
+              is_enabled: e.target.checked
+            })}
+          />
+          Включить WhatsApp уведомления
+        </label>
+        
+        <button onClick={handleSave}>Сохранить настройки</button>
+      </div>
+    </div>
+  );
+};
+
+// Компонент тестирования сообщений
+const WhatsAppTester = ({ storeId }) => {
+  const [testData, setTestData] = useState({
+    phone_number: '',
+    template_text: '',
+    sample_data: {
+      user_name: 'Иван Иванов',
+      order_num: '12345',
+      product_name: 'Тестовый товар',
+      item_qty: '2',
+      shop_name: 'Мой магазин'
+    }
+  });
+
+  const handleSendTest = async () => {
+    try {
+      const response = await fetch(`/api/whatsapp/send-test/${storeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('Тестовое сообщение отправлено!');
+      } else {
+        alert('Ошибка отправки: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Ошибка отправки тестового сообщения:', error);
+    }
+  };
+
+  return (
+    <div className="whatsapp-tester">
+      <h3>Тестирование сообщений</h3>
+      
+      <div className="test-form">
+        <label>
+          Номер телефона для теста:
+          <input
+            type="tel"
+            value={testData.phone_number}
+            onChange={(e) => setTestData({
+              ...testData,
+              phone_number: e.target.value
+            })}
+            placeholder="+7XXXXXXXXXX"
+          />
+        </label>
+        
+        <label>
+          Текст шаблона:
+          <textarea
+            value={testData.template_text}
+            onChange={(e) => setTestData({
+              ...testData,
+              template_text: e.target.value
+            })}
+            rows={5}
+          />
+        </label>
+        
+        <button onClick={handleSendTest}>Отправить тестовое сообщение</button>
+      </div>
+    </div>
+  );
+};
+
+================================================================
+6. ИНСТРУКЦИЯ ПО РАЗВЕРТЫВАНИЮ WAHA
+================================================================
+
+1. Установка WAHA через Docker:
+   docker run -it -p 3000:3000 devlikeapro/waha
+
+2. Настройка сессии:
+   - Откройте http://localhost:3000
+   - Отсканируйте QR-код WhatsApp
+   - Сессия будет сохранена как 'default'
+
+3. Тестирование API:
+   curl -X POST http://localhost:3000/api/sendText \
+     -H "Content-Type: application/json" \
+     -d '{
+       "session": "default",
+       "chatId": "7XXXXXXXXXX@c.us",
+       "text": "Тестовое сообщение"
+     }'
+
+4. Настройка в системе:
+   - Введите URL WAHA сервера в настройках магазина
+   - Укажите имя сессии
+   - Включите уведомления
+
+================================================================
+7. ПРОЦЕСС РАБОТЫ СИСТЕМЫ
+================================================================
+
+1. Администратор создает шаблон сообщения в веб-интерфейсе
+2. Система сохраняет шаблон в базе данных
+3. При получении нового заказа из Kaspi API:
+   - Система извлекает данные покупателя
+   - Применяет шаблон с подстановкой переменных
+   - Отправляет сообщение через WAHA API
+   - Логирует результат отправки
+4. Покупатель получает персонализированное сообщение в WhatsApp
+
+================================================================
+8. ДОПОЛНИТЕЛЬНЫЕ ВОЗМОЖНОСТИ
+================================================================
+
+- Предварительный просмотр сообщения перед отправкой
+- История всех отправленных сообщений
+- Статистика доставки и открытий
+- Множественные шаблоны для разных типов заказов
+- Валидация номеров телефонов
+- Автоматическое форматирование номеров
+- Поддержка медиа-файлов (изображения, документы)
+- Интеграция с другими мессенджерами
+- A/B тестирование шаблонов сообщений
+
+================================================================
+9. БЕЗОПАСНОСТЬ И ОГРАНИЧЕНИЯ
+================================================================
+
+- WhatsApp не разрешает использование ботов на своей платформе
+- WAHA использует реальный WhatsApp Web для избежания блокировок
+- Рекомендуется ограничить количество сообщений в день
+- Необходимо соблюдать правила WhatsApp по спаму
+- Рекомендуется получать согласие пользователей на получение сообщений
+
+================================================================
+10. МОНИТОРИНГ И ЛОГИРОВАНИЕ
+================================================================
+
+- Все отправленные сообщения логируются в базе данных
+- Отслеживается статус доставки каждого сообщения
+- Ведется статистика по магазинам и шаблонам
+- Настраиваемые алерты при ошибках отправки
+- Экспорт логов для анализа
+
+================================================================
+КОНЕЦ ДОКУМЕНТА
+================================================================

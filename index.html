@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Cube Development</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon-cube.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon-cube.svg" />
+    
+    <meta name="description" content="Автоматизация продаж в Kaspi.kz" />
+    <meta name="author" content="Hasabasa" />
+
+    <meta property="og:title" content="Автоматизация продаж в Kaspi.kz" />
+    <meta property="og:description" content="Hasabasa" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <style>
+      /* Critical loading styles - inline for instant display */
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        background: rgb(249 250 251);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+      }
+      
+      
+      #initial-loader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* New loader styles */
+      .loader {
+        --s: 25px;
+        
+        --_d: calc(0.353*var(--s));
+        width: calc(var(--s) + var(--_d));
+        aspect-ratio: 1;
+        display: grid;
+        filter: drop-shadow(0 0 0 #fff);
+        animation: l2 0.8s infinite;
+      }
+      
+      .loader:before {
+        content: "";
+        clip-path: polygon(var(--_d) 0,100% 0,100% calc(100% - var(--_d)),calc(100% - var(--_d)) 100%,0 100%,0 var(--_d));
+        background:
+          conic-gradient(from -90deg at var(--s) var(--_d),
+           #fff 135deg,#666 0 270deg,#aaa 0);
+      }
+      
+      @keyframes l2{
+        50% {filter:drop-shadow(0 0 5px #fff)}
+      }
+
+      .logo-container {
+        margin-bottom: 1rem;
+        animation: logoFloat 3s ease-in-out infinite;
+      }
+      
+      .logo-svg {
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+      }
+      
+      @keyframes logoFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+      }
+
+      .initial-loading-text {
+        margin-top: 1rem;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: rgb(55 65 81);
+        letter-spacing: 0.025em;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root">
+      <!-- Initial loading screen - shown immediately -->
+      <div id="initial-loader">
+        <div class="logo-container">
+            <g filter="url(#filter0_d_1_125)">
+              <path d="M170.93 161.788V321.634L32.5 241.711V81.8652L170.93 161.788Z" fill="#A2A2A2" stroke="black"/>
+              <path d="M168.68 2.16504C170.381 1.18261 172.478 1.18272 174.18 2.16504L309.86 80.5L171.43 160.423L32.999 80.5L168.68 2.16504Z" fill="#E1E0E0" stroke="black"/>
+              <path d="M309.93 241.711L171.5 321.634V161.788L309.93 81.8652V241.711Z" fill="#646363" stroke="black"/>
+            </g>
+            <defs>
+              <filter id="filter0_d_1_125" x="0" y="0.928223" width="342.86" height="385.572" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                <feOffset dy="32"/>
+                <feGaussianBlur stdDeviation="16"/>
+                <feComposite in2="hardAlpha" operator="out"/>
+                <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+                <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_125"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_125" result="shape"/>
+              </filter>
+            </defs>
+          </svg>
+        </div>
+        <div class="loader"></div>
+        <div class="initial-loading-text">powered by Cube Development</div>
+      </div>
+    </div>
+    
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script 
+      src="https://cdn.gpteng.co/gptengineer.js" 
+      type="module" 
+      async 
+      crossorigin="anonymous"
+      onload="console.log('GPT Engineer script loaded')"
+      onerror="console.warn('GPT Engineer script failed to load')">
+    </script>
+    
+
+    
+    <script>
+      // Remove initial loader when React app is ready
+      window.addEventListener('DOMContentLoaded', function() {
+        // Give React time to mount
+        setTimeout(function() {
+          const initialLoader = document.getElementById('initial-loader');
+          if (initialLoader) {
+            initialLoader.classList.add('fade-out');
+            setTimeout(function() {
+              initialLoader.remove();
+            }, 500);
+          }
+        }, 100);
+      });
+    </script>
+  </body>
+</html>

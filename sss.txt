@@ -1,0 +1,42 @@
+# Основные настройки
+DEBUG=true
+APP_NAME=Unified Kaspi Demper Backend
+VERSION=1.0.0
+
+# База данных - используем Supabase
+DB_MODE=supabase
+
+# Supabase настройки
+SUPABASE_URL=https://jljglgvrqtjoqvxzmnja.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsamdsZ3ZycXRqb3F2eHptbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2ODk4MzksImV4cCI6MjA3NTI2NTgzOX0.cVnaJDEtsPjNPXwOPfPGTam1Id61y8h4xyyQHqVr39w
+
+# Авторизация
+AUTH_METHOD=playwright
+
+# Прокси система (отключена для начала)
+PROXY_ENABLED=false
+PROXY_LIST=
+
+# Демпер система
+DEMPER_ENABLED=true
+DEMPER_INTERVAL=300
+DEMPER_MAX_CONCURRENT=10
+
+# CORS настройки для разработки
+CORS_ALLOWED_ORIGINS=^(http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$
+
+# Логирование
+LOG_LEVEL=INFO
+LOG_FILE=logs/app.log
+
+# Kaspi API
+KASPI_BASE_URL=https://mc.shop.kaspi.kz
+KASPI_LOGIN_URL=https://idmc.shop.kaspi.kz/login
+
+# Безопасность
+SECRET_KEY=dev-secret-key-change-in-production
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Шардинг
+INSTANCE_INDEX=0
+INSTANCE_COUNT=1

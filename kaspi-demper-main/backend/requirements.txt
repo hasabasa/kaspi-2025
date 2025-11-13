@@ -1,0 +1,26 @@
+python-dotenv==1.1.1
+fastapi==0.115.14
+uvicorn==0.34.3
+
+asyncpg
+aiohttp
+httpx==0.28.1
+requests==2.32.4
+
+pydantic==2.11.7
+pydantic_core==2.33.2
+typing_extensions==4.14.0
+
+python-dateutil==2.9.0.post0
+pytz==2022.1
+
+supabase==2.16.0
+postgrest==1.1.1
+storage3==0.12.0
+supafunc==0.10.1
+gotrue==2.12.2
+realtime==2.5.3
+
+playwright==1.53.0
+pandas  # для экспорта XLSX в api_parser
+openpyxl  # чтобы pandas мог сохранять Excel

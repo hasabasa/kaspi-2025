@@ -1,0 +1,191 @@
+-- Migration Scripts for Kaspi Demper Backend
+-- Run these in order if you need to update existing database
+
+-- Migration 001: Initial schema setup
+-- (This is handled by database_schema.sql)
+
+-- Migration 002: Add indexes for better performance
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_kaspi_stores_created_at ON kaspi_stores(created_at);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_created_at ON products(created_at);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_price ON products(price);
+
+-- Migration 003: Add additional columns if needed
+-- ALTER TABLE kaspi_stores ADD COLUMN IF NOT EXISTS description TEXT;
+-- ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
+-- ALTER TABLE products ADD COLUMN IF NOT EXISTS brand TEXT;
+
+-- Migration 004: Update existing data if needed
+-- UPDATE products SET bot_active = true WHERE bot_active IS NULL;
+-- UPDATE kaspi_stores SET is_active = true WHERE is_active IS NULL;
+
+-- Migration 005: Add constraints if needed
+-- ALTER TABLE products ADD CONSTRAINT check_price_positive CHECK (price > 0);
+-- ALTER TABLE kaspi_stores ADD CONSTRAINT check_products_count_non_negative CHECK (products_count >= 0);
+
+-- Migration 006: Add audit trail if needed
+-- CREATE TABLE IF NOT EXISTS audit_log (
+--     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--     table_name TEXT NOT NULL,
+--     record_id UUID NOT NULL,
+--     action TEXT NOT NULL, -- INSERT, UPDATE, DELETE
+--     old_data JSONB,
+--     new_data JSONB,
+--     user_id TEXT,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- );
+
+-- Migration 007: Add notification settings if needed
+-- CREATE TABLE IF NOT EXISTS notification_settings (
+--     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--     user_id TEXT NOT NULL,
+--     store_id UUID REFERENCES kaspi_stores(id) ON DELETE CASCADE,
+--     email_notifications BOOLEAN DEFAULT true,
+--     sms_notifications BOOLEAN DEFAULT false,
+--     price_change_threshold INTEGER DEFAULT 10, -- percentage
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+--     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- );
+
+-- Migration 008: Add user preferences if needed
+-- CREATE TABLE IF NOT EXISTS user_preferences (
+--     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--     user_id TEXT PRIMARY KEY,
+--     timezone TEXT DEFAULT 'UTC',
+--     currency TEXT DEFAULT 'KZT',
+--     language TEXT DEFAULT 'ru',
+--     theme TEXT DEFAULT 'light',
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+--     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- );
+
+-- Migration 009: Add analytics tables if needed
+-- CREATE TABLE IF NOT EXISTS analytics_events (
+--     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--     event_type TEXT NOT NULL,
+--     user_id TEXT,
+--     store_id UUID REFERENCES kaspi_stores(id) ON DELETE SET NULL,
+--     product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+--     event_data JSONB,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- );
+
+-- Migration 010: Add backup and restore functionality
+-- CREATE OR REPLACE FUNCTION backup_store_data(store_uuid UUID)
+-- RETURNS JSONB AS $$
+-- DECLARE
+--     result JSONB;
+-- BEGIN
+--     SELECT jsonb_build_object(
+--         'store', to_jsonb(ks.*),
+--         'products', COALESCE(products_data.data, '[]'::jsonb),
+--         'preorders', COALESCE(preorders_data.data, '[]'::jsonb)
+--     ) INTO result
+--     FROM kaspi_stores ks
+--     LEFT JOIN (
+--         SELECT store_id, jsonb_agg(to_jsonb(p.*)) as data
+--         FROM products p
+--         GROUP BY store_id
+--     ) products_data ON ks.id = products_data.store_id
+--     LEFT JOIN (
+--         SELECT store_id, jsonb_agg(to_jsonb(po.*)) as data
+--         FROM preorders po
+--         GROUP BY store_id
+--     ) preorders_data ON ks.id = preorders_data.store_id
+--     WHERE ks.id = store_uuid;
+--     
+--     RETURN result;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- Migration 011: Add cleanup functions
+-- CREATE OR REPLACE FUNCTION cleanup_old_data()
+-- RETURNS VOID AS $$
+-- BEGIN
+--     -- Delete preorders older than 1 year
+--     DELETE FROM preorders WHERE created_at < NOW() - INTERVAL '1 year';
+--     
+--     -- Delete inactive products older than 6 months
+--     DELETE FROM products 
+--     WHERE bot_active = false AND updated_at < NOW() - INTERVAL '6 months';
+--     
+--     -- Delete analytics events older than 2 years
+--     DELETE FROM analytics_events WHERE created_at < NOW() - INTERVAL '2 years';
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- Migration 012: Add monitoring views
+-- CREATE OR REPLACE VIEW system_health AS
+-- SELECT 
+--     'kaspi_stores' as table_name,
+--     COUNT(*) as record_count,
+--     COUNT(*) FILTER (WHERE is_active = true) as active_count,
+--     MAX(updated_at) as last_updated
+-- FROM kaspi_stores
+-- UNION ALL
+-- SELECT 
+--     'products' as table_name,
+--     COUNT(*) as record_count,
+--     COUNT(*) FILTER (WHERE bot_active = true) as active_count,
+--     MAX(updated_at) as last_updated
+-- FROM products
+-- UNION ALL
+-- SELECT 
+--     'preorders' as table_name,
+--     COUNT(*) as record_count,
+--     COUNT(*) FILTER (WHERE status = 'processing') as active_count,
+--     MAX(updated_at) as last_updated
+-- FROM preorders;
+
+-- Migration 013: Add data validation functions
+-- CREATE OR REPLACE FUNCTION validate_store_data(store_uuid UUID)
+-- RETURNS TABLE(validation_type TEXT, is_valid BOOLEAN, message TEXT) AS $$
+-- BEGIN
+--     -- Check if store exists
+--     IF NOT EXISTS (SELECT 1 FROM kaspi_stores WHERE id = store_uuid) THEN
+--         RETURN QUERY SELECT 'store_exists'::TEXT, false::BOOLEAN, 'Store not found'::TEXT;
+--         RETURN;
+--     END IF;
+--     
+--     -- Check if store has valid merchant_id
+--     IF EXISTS (SELECT 1 FROM kaspi_stores WHERE id = store_uuid AND merchant_id IS NULL OR merchant_id = '') THEN
+--         RETURN QUERY SELECT 'merchant_id'::TEXT, false::BOOLEAN, 'Invalid merchant_id'::TEXT;
+--     ELSE
+--         RETURN QUERY SELECT 'merchant_id'::TEXT, true::BOOLEAN, 'Valid merchant_id'::TEXT;
+--     END IF;
+--     
+--     -- Check if store has products
+--     IF EXISTS (SELECT 1 FROM products WHERE store_id = store_uuid) THEN
+--         RETURN QUERY SELECT 'has_products'::TEXT, true::BOOLEAN, 'Store has products'::TEXT;
+--     ELSE
+--         RETURN QUERY SELECT 'has_products'::TEXT, false::BOOLEAN, 'Store has no products'::TEXT;
+--     END IF;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- Migration 014: Add performance optimization
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_composite ON products(store_id, bot_active, created_at);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_preorders_composite ON preorders(store_id, status, created_at);
+
+-- Migration 015: Add data archiving
+-- CREATE TABLE IF NOT EXISTS archived_preorders (
+--     LIKE preorders INCLUDING ALL
+-- );
+
+-- CREATE OR REPLACE FUNCTION archive_old_preorders()
+-- RETURNS INTEGER AS $$
+-- DECLARE
+--     archived_count INTEGER;
+-- BEGIN
+--     WITH archived AS (
+--         DELETE FROM preorders 
+--         WHERE status IN ('completed', 'cancelled') 
+--         AND created_at < NOW() - INTERVAL '3 months'
+--         RETURNING *
+--     )
+--     INSERT INTO archived_preorders 
+--     SELECT * FROM archived;
+--     
+--     GET DIAGNOSTICS archived_count = ROW_COUNT;
+--     RETURN archived_count;
+-- END;
+-- $$ LANGUAGE plpgsql;

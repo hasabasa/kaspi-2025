@@ -1,0 +1,221 @@
+/* Mobile Safe Areas CSS */
+/* Поддержка safe areas для устройств с notch */
+
+/* Основные safe area переменные */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* Safe area utility classes */
+.pt-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pr-safe-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.pb-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pl-safe-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.p-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* Margin utilities */
+.mt-safe-top {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+
+.mr-safe-right {
+  margin-right: env(safe-area-inset-right, 0px);
+}
+
+.mb-safe-bottom {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.ml-safe-left {
+  margin-left: env(safe-area-inset-left, 0px);
+}
+
+/* Height utilities for mobile layouts */
+.min-h-screen-safe {
+  min-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+.h-screen-safe {
+  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+/* Touch target sizes (Apple HIG: minimum 44x44px) */
+.min-h-touch-target {
+  min-height: 44px;
+}
+
+.min-w-touch-target {
+  min-width: 44px;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Enhanced touch targets for better accessibility */
+.touch-target-large {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Mobile viewport optimizations */
+@supports (height: 100dvh) {
+  .min-h-screen-safe {
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+  
+  .h-screen-safe {
+    height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Mobile-specific scrolling improvements */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Prevent zoom on input focus (iOS) */
+.no-zoom {
+  font-size: 16px;
+}
+
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"], 
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* Mobile-optimized focus styles */
+@media (max-width: 767px) {
+  .focus-mobile {
+    outline: 2px solid #007AFF;
+    outline-offset: 2px;
+  }
+  
+  button:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid #007AFF;
+    outline-offset: 2px;
+  }
+}
+
+/* Performance optimizations for mobile */
+.mobile-optimized {
+  /* GPU acceleration for smoother animations */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  
+  /* Reduce paint operations */
+  will-change: auto;
+}
+
+/* Mobile gesture improvements */
+.touch-action-pan-y {
+  touch-action: pan-y;
+}
+
+.touch-action-pan-x {
+  touch-action: pan-x;
+}
+
+.touch-action-manipulation {
+  touch-action: manipulation;
+}
+
+/* Mobile-specific animations */
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-slide-up {
+    animation: mobileSlideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .mobile-fade-in {
+    animation: mobileFadeIn 0.2s ease-out;
+  }
+}
+
+@keyframes mobileSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes mobileFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Landscape mode optimizations */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mobile-landscape {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  
+  .mobile-landscape .mobile-header {
+    height: 3rem; /* Smaller header in landscape */
+  }
+}
+
+/* Dark mode safe areas */
+@media (prefers-color-scheme: dark) {
+  .dark-safe-area {
+    background-color: #000;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .touch-target {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Accessibility: respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mobile-slide-up,
+  .mobile-fade-in {
+    animation: none;
+  }
+  
+  .mobile-optimized {
+    transform: none;
+    transition: none;
+  }
+}

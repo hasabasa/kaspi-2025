@@ -1,0 +1,73 @@
+
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useTheme } from "@/hooks/useTheme";
+import DashboardLayout from "./layouts/DashboardLayout";
+import AdminLayout from "./layouts/AdminLayout";
+import ProfilePage from "./pages/ProfilePage";
+import PriceBotPage from "./pages/PriceBotSimple";
+import SalesPage from "./pages/SalesPageEnhanced";
+import UnitEconomicsPage from "./pages/UnitEconomicsPage";
+import IntegrationPage from "./pages/IntegrationPage";
+import WhatsAppPage from "./pages/WhatsAppPage";
+import PreordersPage from "./pages/PreordersPage";
+import SimpleConnectPage from "./pages/SimpleConnectPage";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const App = () => {
+  // Инициализируем тему
+  useTheme();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard/price-bot" replace />} />
+            <Route path="/connect" element={<SimpleConnectPage />} />
+            {/* Authentication routes removed — app runs without login */}
+            {/* Основная панель */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Navigate to="price-bot" replace />} />
+              <Route path="price-bot" element={<PriceBotPage />} />
+              <Route path="sales" element={<SalesPage />} />
+              <Route path="unit-economics" element={
+                <ErrorBoundary>
+                  <UnitEconomicsPage />
+                </ErrorBoundary>
+              } />
+              <Route path="whatsapp" element={<WhatsAppPage />} />
+              <Route path="integrations" element={<IntegrationPage />} />
+              <Route path="preorders" element={<PreordersPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
+
+export default App;

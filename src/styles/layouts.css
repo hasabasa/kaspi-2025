@@ -1,0 +1,153 @@
+
+@layer utilities {
+  /* Seamless section transitions */
+  .seamless-section {
+    position: relative;
+    background: inherit;
+  }
+
+  /* Smooth gradient overlays for seamless transitions */
+  .gradient-overlay-top {
+    position: relative;
+  }
+
+  .gradient-overlay-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 150px;
+    background: linear-gradient(180deg, 
+      rgba(248, 250, 252, 1) 0%,
+      rgba(248, 250, 252, 0.9) 20%,
+      rgba(248, 250, 252, 0.6) 40%,
+      rgba(248, 250, 252, 0.3) 60%,
+      rgba(248, 250, 252, 0.1) 80%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .gradient-overlay-bottom {
+    position: relative;
+  }
+
+  .gradient-overlay-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 150px;
+    background: linear-gradient(0deg, 
+      rgba(248, 250, 252, 1) 0%,
+      rgba(248, 250, 252, 0.9) 20%,
+      rgba(248, 250, 252, 0.6) 40%,
+      rgba(248, 250, 252, 0.3) 60%,
+      rgba(248, 250, 252, 0.1) 80%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Section blend for seamless transitions */
+  .section-blend-top {
+    background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(248, 250, 252, 0.1) 20%,
+      rgba(248, 250, 252, 0.3) 40%,
+      rgba(248, 250, 252, 0.6) 60%,
+      rgba(248, 250, 252, 0.8) 80%,
+      rgba(248, 250, 252, 1) 100%
+    );
+  }
+
+  .section-blend-bottom {
+    background: linear-gradient(to top,
+      transparent 0%,
+      rgba(248, 250, 252, 0.1) 20%,
+      rgba(248, 250, 252, 0.3) 40%,
+      rgba(248, 250, 252, 0.6) 60%,
+      rgba(248, 250, 252, 0.8) 80%,
+      rgba(248, 250, 252, 1) 100%
+    );
+  }
+
+  /* Enhanced blur transitions for smoother edges */
+  .blur-edge-top {
+    position: relative;
+    mask: linear-gradient(to bottom, transparent 0%, black 20%, black 100%);
+    -webkit-mask: linear-gradient(to bottom, transparent 0%, black 20%, black 100%);
+  }
+
+  .blur-edge-bottom {
+    position: relative;
+    mask: linear-gradient(to top, transparent 0%, black 20%, black 100%);
+    -webkit-mask: linear-gradient(to top, transparent 0%, black 20%, black 100%);
+  }
+
+  .blur-edge-both {
+    position: relative;
+    mask: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    -webkit-mask: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  }
+
+  /* Adaptive gradient overlays for different background colors */
+  .gradient-overlay-dark::before {
+    background: linear-gradient(180deg, 
+      rgba(15, 23, 42, 1) 0%,
+      rgba(15, 23, 42, 0.9) 20%,
+      rgba(15, 23, 42, 0.6) 40%,
+      rgba(15, 23, 42, 0.3) 60%,
+      rgba(15, 23, 42, 0.1) 80%,
+      transparent 100%
+    ) !important;
+  }
+
+  .gradient-overlay-dark::after {
+    background: linear-gradient(0deg, 
+      rgba(15, 23, 42, 1) 0%,
+      rgba(15, 23, 42, 0.9) 20%,
+      rgba(15, 23, 42, 0.6) 40%,
+      rgba(15, 23, 42, 0.3) 60%,
+      rgba(15, 23, 42, 0.1) 80%,
+      transparent 100%
+    ) !important;
+  }
+
+  .gradient-overlay-light::before {
+    background: linear-gradient(180deg, 
+      rgba(248, 250, 252, 1) 0%,
+      rgba(248, 250, 252, 0.9) 20%,
+      rgba(248, 250, 252, 0.6) 40%,
+      rgba(248, 250, 252, 0.3) 60%,
+      rgba(248, 250, 252, 0.1) 80%,
+      transparent 100%
+    ) !important;
+  }
+
+  .gradient-overlay-light::after {
+    background: linear-gradient(0deg, 
+      rgba(248, 250, 252, 1) 0%,
+      rgba(248, 250, 252, 0.9) 20%,
+      rgba(248, 250, 252, 0.6) 40%,
+      rgba(248, 250, 252, 0.3) 60%,
+      rgba(248, 250, 252, 0.1) 80%,
+      transparent 100%
+    ) !important;
+  }
+
+  /* Seamless background blend */
+  .bg-seamless {
+    background: linear-gradient(to bottom,
+      rgba(248, 250, 252, 0.95) 0%,
+      rgba(239, 246, 255, 0.8) 25%,
+      rgba(237, 233, 254, 0.8) 50%,
+      rgba(248, 250, 252, 0.95) 75%,
+      rgba(248, 250, 252, 1) 100%
+    );
+  }
+}
