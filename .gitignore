@@ -30,6 +30,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+node-v*/
+node.tar.gz
+nodejs.pkg
+node-installer.pkg
 
 # IDE
 .vscode/
