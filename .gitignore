@@ -67,6 +67,10 @@ build/
 .DS_Store
 Thumbs.db
 
+# Large files
+Docker.dmg
+*.dmg
+
 # Playwright
 playwright-report/
 test-results/
