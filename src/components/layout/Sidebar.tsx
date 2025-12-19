@@ -7,7 +7,9 @@ import {
   ShoppingBag, 
   MessageSquare, 
   Zap, 
-  Menu 
+  Menu,
+  Scale,
+  Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScreenSize } from "@/hooks/use-screen-size";
@@ -61,6 +63,14 @@ const Sidebar = ({ isOpen, setIsOpen, width }: SidebarProps) => {
                 <Zap className="h-5 w-5" />
                 <span>Интеграции</span>
               </Link>
+              <Link to="/dashboard/ai-accountant" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Receipt className="h-5 w-5" />
+                <span>AI-Бухгалтер</span>
+              </Link>
+              <Link to="/dashboard/ai-lawyer" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Scale className="h-5 w-5" />
+                <span>AI-Юрист</span>
+              </Link>
             </nav>
           </div>
         </DrawerContent>
@@ -112,6 +122,18 @@ const Sidebar = ({ isOpen, setIsOpen, width }: SidebarProps) => {
           <Link to="/dashboard/integrations">
             <Zap className="text-base" />
             <span className="text">Интеграции</span>
+          </Link>
+        </li>
+        <li className={location.pathname === "/dashboard/ai-accountant" ? "active" : ""}>
+          <Link to="/dashboard/ai-accountant">
+            <Receipt className="text-base" />
+            <span className="text">AI-Бухгалтер</span>
+          </Link>
+        </li>
+        <li className={location.pathname === "/dashboard/ai-lawyer" ? "active" : ""}>
+          <Link to="/dashboard/ai-lawyer">
+            <Scale className="text-base" />
+            <span className="text">AI-Юрист</span>
           </Link>
         </li>
       </ul>

@@ -67,6 +67,17 @@ export const API_ENDPOINTS = {
     database: '/health/database',
     supabase: '/health/supabase',
   },
+  
+  // AI Assistants endpoints
+  aiAccountant: {
+    ask: '/ai-accountant/ask',
+    calculate: '/ai-accountant/calculate',
+  },
+  
+  aiLawyer: {
+    resolveDispute: '/ai-lawyer/resolve-dispute',
+    analyzeContract: '/ai-lawyer/analyze-contract',
+  },
 };
 
 // Вспомогательные функции для построения URL

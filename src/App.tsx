@@ -8,6 +8,8 @@ import SalesPageEnhanced from "@/pages/SalesPageEnhanced";
 import UnitEconomicsPage from "@/pages/UnitEconomicsPage";
 import WhatsAppPage from "@/pages/WhatsAppPage";
 import IntegrationPage from "@/pages/IntegrationPage";
+import AIAccountantPage from "@/pages/AIAccountantPage";
+import AILawyerPage from "@/pages/AILawyerPage";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -39,6 +41,8 @@ function App() {
               <Route path="preorders" element={<PreordersPage />} />
               <Route path="whatsapp" element={<WhatsAppPage />} />
               <Route path="integrations" element={<IntegrationPage />} />
+              <Route path="ai-accountant" element={<AIAccountantPage />} />
+              <Route path="ai-lawyer" element={<AILawyerPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard/price-bot" replace />} />
           </Routes>
